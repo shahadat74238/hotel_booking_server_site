@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -27,8 +27,16 @@ async function run() {
 
     const roomsCollection = client.db("fiveStar_hotel").collection("rooms");
 
+    // ------------- Get rooms ----------------------
     app.get("/api/v1/rooms", async(req, res) => {
       const result = await roomsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/api/v1/rooms/:roomId", async(req, res) =>{
+      const id = req.params.roomId;
+      const query = {_id: new ObjectId(id)}
+      const result = await roomsCollection.findOne(query);
       res.send(result);
     });
 
