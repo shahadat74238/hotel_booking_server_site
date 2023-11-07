@@ -4,7 +4,7 @@ const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
-var cookieParser = require('cookie-parser')
+var cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3001;
 
 // ------------ Middleware --------------------
@@ -15,7 +15,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(cookieParser())
+app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cxghft2.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -52,6 +52,7 @@ async function run() {
     // await client.connect();
 
     const roomsCollection = client.db("fiveStar_hotel").collection("rooms");
+    const bookingCollection = client.db("fiveStar_hotel").collection("bookings");
     const commentsCollection = client
       .db("fiveStar_hotel")
       .collection("comments");
@@ -70,13 +71,14 @@ async function run() {
         .send({ success: true });
     });
 
-    app.post('/api/v1/logout', async(req, res) => {
-      res.clearCookie('token', {maxAge: 0}).send({success: true});
-    })
-  
+    app.post("/api/v1/logout", async (req, res) => {
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
+
     // ------------- Get rooms ----------------------
     app.get("/api/v1/rooms", async (req, res) => {
       const result = await roomsCollection.find().toArray();
+      result.sort((roomA, roomB) => roomB.price - roomA.price);
       res.send(result);
     });
 
@@ -102,6 +104,41 @@ async function run() {
       const result = await commentsCollection.find(query).toArray();
       res.send(result);
     });
+
+    // --------------- Booking ---------------
+
+    app.post('/api/v1/booking', async (req, res) => {
+      const booking = req.body;
+      console.log(booking);
+      const result = await bookingCollection.insertOne(booking);
+      res.send(result);
+    });
+
+    app.get('/api/v1/booking', async (req, res) => {
+      const result = await bookingCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete('/api/v1/booking/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result);
+    });
+    app.put('/api/v1/booking/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const options = { upsert: true };
+      const updateBooking = req.body;
+      const updateDoc = {
+        $set: {
+          adf: updateBooking.adf,
+        },
+      };
+      const result = await bookingCollection.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
+    
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
