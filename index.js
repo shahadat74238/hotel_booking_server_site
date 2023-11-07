@@ -4,6 +4,7 @@ const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
+var cron = require("node-cron");
 var cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3001;
 
@@ -52,7 +53,9 @@ async function run() {
     // await client.connect();
 
     const roomsCollection = client.db("fiveStar_hotel").collection("rooms");
-    const bookingCollection = client.db("fiveStar_hotel").collection("bookings");
+    const bookingCollection = client
+      .db("fiveStar_hotel")
+      .collection("bookings");
     const commentsCollection = client
       .db("fiveStar_hotel")
       .collection("comments");
@@ -77,8 +80,15 @@ async function run() {
 
     // ------------- Get rooms ----------------------
     app.get("/api/v1/rooms", async (req, res) => {
+      const price = req.query.price;
       const result = await roomsCollection.find().toArray();
-      result.sort((roomA, roomB) => roomB.price - roomA.price);
+      if (price === "highToLow") {
+        result.sort((roomA, roomB) => roomB.price - roomA.price);
+      } else if (price === "lowToHigh") {
+        result.sort((roomA, roomB) => roomA.price - roomB.price);
+      } else if (price === "a-z") {
+        result.sort((a, b) => a.roomTitle.localeCompare(b.roomTitle));
+      }
       res.send(result);
     });
 
@@ -107,27 +117,53 @@ async function run() {
 
     // --------------- Booking ---------------
 
-    app.post('/api/v1/booking', async (req, res) => {
+    app.post("/api/v1/booking", async (req, res) => {
       const booking = req.body;
-      console.log(booking);
+      const { roomId, checkOut } = booking;
+      const query = { _id: new ObjectId(roomId) };
+      console.log(roomId);
       const result = await bookingCollection.insertOne(booking);
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          isBooked: true,
+          endDate: checkOut,
+        },
+      };
+      await roomsCollection.updateOne(query, updateDoc, options);
       res.send(result);
     });
 
-    app.get('/api/v1/booking', async (req, res) => {
-      const result = await bookingCollection.find().toArray();
+    app.get("/api/v1/booking", async (req, res) => {
+      const email = req.query.email;
+      const query = { userEmail: email };
+      const result = await bookingCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.delete('/api/v1/booking/:id', async (req, res) => {
+    app.delete("/api/v1/booking/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await bookingCollection.deleteOne(query);
-      res.send(result);
+      const query = { _id: new ObjectId(id) };
+      const findBooking = await bookingCollection.findOne(query);
+      if (findBooking) {
+        const query2 = { _id: new ObjectId(findBooking.roomId) };
+        const result = await bookingCollection.deleteOne(query);
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            isBooked: false,
+            endDate: "",
+          },
+        };
+        await roomsCollection.updateOne(query2, updateDoc, options);
+        return res.send(result);
+      }
+      res.send("Room Not Found !");
     });
-    app.put('/api/v1/booking/:id', async (req, res) => {
+
+    app.put("/api/v1/booking/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const options = { upsert: true };
       const updateBooking = req.body;
       const updateDoc = {
@@ -135,10 +171,43 @@ async function run() {
           adf: updateBooking.adf,
         },
       };
-      const result = await bookingCollection.updateOne(query, updateDoc, options);
+      const result = await bookingCollection.updateOne(
+        query,
+        updateDoc,
+        options
+      );
       res.send(result);
     });
-    
+
+    // ---------------
+
+    // cron.schedule('59 23 * * *', () => {
+    cron.schedule("5 * * * * *", async () => {
+      const ab = await roomsCollection.find().toArray();
+      await Promise.all(
+        ab.map(async (a) => {
+          if (a.isBooked) {
+            const query2 = { _id: new ObjectId(a._id) };
+            const options = { upsert: true };
+            const updateDoc = {
+              $set: {
+                isBooked: false,
+                endDate: "",
+              },
+            };
+            // await bookingCollection.delete({ roomId: new ObjectId(a._id) });
+
+            const ud = await roomsCollection.updateOne(
+              query2,
+              updateDoc,
+              options
+            );
+            console.log();
+          }
+        })
+      );
+      console.log("running a task every minute");
+    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
