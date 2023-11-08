@@ -10,15 +10,22 @@ const port = process.env.PORT || 3001;
 
 // ------------ Middleware --------------------
 app.use(express.json());
-app.use(
-  cors({
-    origin: [
-      "https://hotel-a678c.web.app",
-      "https://hotel-a678c.firebaseapp.com",
-  ],
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin: [
+//       "https://hotel-a678c.web.app",
+//       "https://hotel-a678c.firebaseapp.com",
+//   ],
+//     credentials: true,
+//   })
+// );
+app.use(cors({
+  origin: [
+    "https://hotel-a678c.web.app",
+    "https://hotel-a678c.firebaseapp.com/"
+],
+  credentials: true,
+}))
 app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cxghft2.mongodb.net/?retryWrites=true&w=majority`;
