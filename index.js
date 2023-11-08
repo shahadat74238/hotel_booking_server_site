@@ -59,6 +59,9 @@ async function run() {
     const commentsCollection = client
       .db("fiveStar_hotel")
       .collection("comments");
+    const featureCollection = client
+      .db("fiveStar_hotel")
+      .collection("featureRooms");
 
     // ---------------- jwt token ----------------
     app.post("/api/v1/token", async (req, res) => {
@@ -99,6 +102,12 @@ async function run() {
       res.send(result);
     });
 
+    // -------------- Features Rooms --------------
+    app.get('/api/v1/features/rooms', async (req, res) => {
+      const result = await featureCollection.find().toArray()
+      res.send(result);
+    })
+
     // --------------- Comments --------------------
 
     app.post("/api/v1/comments", async (req, res) => {
@@ -134,7 +143,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/api/v1/booking", async (req, res) => {
+    app.get("/api/v1/booking", verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { userEmail: email };
       const result = await bookingCollection.find(query).toArray();
@@ -161,14 +170,14 @@ async function run() {
       res.send("Room Not Found !");
     });
 
-    app.put("/api/v1/booking/:id", async (req, res) => {
-      const id = req.params.id;
+    app.put("/api/v1/booking", async (req, res) => {
+      const id = req.query.id;
       const query = { _id: new ObjectId(id) };
       const options = { upsert: true };
       const updateBooking = req.body;
       const updateDoc = {
         $set: {
-          adf: updateBooking.adf,
+          checkOut: updateBooking.newDate,
         },
       };
       const result = await bookingCollection.updateOne(
@@ -181,13 +190,13 @@ async function run() {
 
     // ---------------
 
-    // cron.schedule('59 23 * * *', () => {
-    cron.schedule("5 * * * * *", async () => {
+    cron.schedule(" 59 23 * * *", async () => {
       const ab = await roomsCollection.find().toArray();
       await Promise.all(
         ab.map(async (a) => {
           if (a.isBooked) {
             const query2 = { _id: new ObjectId(a._id) };
+            console.log(query2);
             const options = { upsert: true };
             const updateDoc = {
               $set: {
@@ -195,7 +204,7 @@ async function run() {
                 endDate: "",
               },
             };
-            // await bookingCollection.delete({ roomId: new ObjectId(a._id) });
+            await bookingCollection.deleteMany();
 
             const ud = await roomsCollection.updateOne(
               query2,
