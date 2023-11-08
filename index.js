@@ -10,15 +10,6 @@ const port = process.env.PORT || 3001;
 
 // ------------ Middleware --------------------
 app.use(express.json());
-// app.use(
-//   cors({
-//     origin: [
-//       "https://hotel-a678c.web.app",
-//       "https://hotel-a678c.firebaseapp.com",
-//   ],
-//     credentials: true,
-//   })
-// );
 app.use(cors({
   origin: [
     "https://hotel-a678c.web.app",
@@ -51,7 +42,6 @@ const verifyToken = (req, res, next) => {
     if (err) {
       return res.status(401).send({ message: "Unauthorized" });
     }
-    // console.log(decoded);
     req.user = decoded;
     next();
   });
