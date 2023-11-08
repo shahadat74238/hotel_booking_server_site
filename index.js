@@ -1,8 +1,8 @@
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const app = express();
-const cors = require("cors");
 require("dotenv").config();
+const cors = require("cors");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 var cron = require("node-cron");
 var cookieParser = require("cookie-parser");
@@ -12,7 +12,10 @@ const port = process.env.PORT || 3001;
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: [
+      "https://hotel-a678c.web.app",
+      "https://hotel-a678c.firebaseapp.com",
+  ],
     credentials: true,
   })
 );
@@ -219,7 +222,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
